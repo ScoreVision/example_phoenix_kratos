@@ -1,23 +1,44 @@
 defmodule ExamplePhoenixKratosWeb.Router do
+  alias KratosPlug.Plugs.KratosNativePipeline
   use ExamplePhoenixKratosWeb, :router
 
+  @kratos_defaults [
+    {:kratos_base_url, "https://optimistic-curran-64ebdafquq.projects.oryapis.com"}
+  ]
+
   pipeline :browser do
-    plug :accepts, ["html"]
-    plug :fetch_session
-    plug :fetch_live_flash
-    plug :put_root_layout, {ExamplePhoenixKratosWeb.Layouts, :root}
-    plug :protect_from_forgery
-    plug :put_secure_browser_headers
+    plug(:accepts, ["html"])
+    plug(:fetch_session)
+    plug(:fetch_live_flash)
+    plug(:put_root_layout, {ExamplePhoenixKratosWeb.Layouts, :root})
+    plug(:protect_from_forgery)
+    plug(:put_secure_browser_headers)
+  end
+
+  pipeline :authenticated_browser do
+    plug(KratosNativePipeline, @kratos_defaults)
+    plug(:browser)
   end
 
   pipeline :api do
-    plug :accepts, ["json"]
+    plug(:accepts, ["json"])
+  end
+
+  pipeline :authenticated_api do
+    plug(KratosNativePipeline, @kratos_defaults)
+    plug(:api)
   end
 
   scope "/", ExamplePhoenixKratosWeb do
-    pipe_through :browser
+    pipe_through(:browser)
 
-    get "/", PageController, :home
+    get("/", PageController, :home)
+  end
+
+  scope "/kratos", ExamplePhoenixKratosWeb do
+    pipe_through(:authenticated_browser)
+
+    get("/session", KratosController, :session)
   end
 
   # Other scopes may use custom stacks.
@@ -35,10 +56,10 @@ defmodule ExamplePhoenixKratosWeb.Router do
     import Phoenix.LiveDashboard.Router
 
     scope "/dev" do
-      pipe_through :browser
+      pipe_through(:browser)
 
-      live_dashboard "/dashboard", metrics: ExamplePhoenixKratosWeb.Telemetry
-      forward "/mailbox", Plug.Swoosh.MailboxPreview
+      live_dashboard("/dashboard", metrics: ExamplePhoenixKratosWeb.Telemetry)
+      forward("/mailbox", Plug.Swoosh.MailboxPreview)
     end
   end
 end
